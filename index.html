@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <!-- Use bootstrap for some minimal styling-->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <title>Project 2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!--Import d3-->
+  <!--<script src="https://d3js.org/d3.v5.min.js"></script>-->
+  <script src="./d3.v5.min.js"></script>
+  <script src="./topojson.v2.min.js"></script>
+  <style>
+    .grid line {
+      stroke: lightgrey;
+      stroke-opacity: 0.8;
+    }
+
+    .state,
+    .state_2 {
+      fill: white;
+      stroke: black;
+    }
+
+    .fixed-event-detail {
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      width: 300px;
+      border: 2px solid rgb(173, 42, 33);
+    }
+
+
+    g.x text {
+      font-size: 7.5px;
+    }
+  </style>
+</head>
+
+<body style="background-color: #dddddd;">
+  <div class="container">
+    <div class="card mx-auto  my-2" style="width: 900px;">
+      <h4 class="card-header">INFO 3300 - Project 2</h4>
+      <div class="card-body">
+        <p>Project by:</p>
+        <ul>
+          <li>By SM Mashuque, (sm2344)</li>
+          <li>By Anstasia Okoye, (ao322)</li>
+          <li>By Kelly Yu, (ky356)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card mx-auto  my-2" style="width: 900px;">
+      <h4 class="card-header">Gun violence and Mass shootings data comparison from 2013-2016</h4>
+      <div class="card-body">
+
+        <div>
+          <button year_value="2013" type="button" class="btn btn-outline-danger year-change-button">2013</button>
+          <button year_value="2014" type="button" class="btn btn-outline-danger year-change-button">2014</button>
+          <button year_value="2015" type="button" class="btn btn-outline-danger year-change-button">2015</button>
+          <button year_value="2016" type="button" class="btn btn-outline-danger year-change-button active">2016</button>
+        </div>
+        <div id="p1_div_for_svg">
+        </div>
+        <div id="p1_div_for_legend">
+        </div>
+        <br>
+        <p>
+          Darker blue colors represent a higher number of gun violence incidents. Mass shooting incidents are represented with
+          red circles. Hover over a circle to view more details about a specific incident.
+        </p>
+      </div>
+    </div>
+
+    <div class="card mx-auto  my-2" style="width: 900px;">
+      <h4 class="card-header">Mass shooting data from 1966-2017</h4>
+      <div class="card-body">
+        <div id="p2_div_for_svg">
+        </div>
+        <label for="slider"> Year: </label>
+        <button type="button" id="slider_value" class="btn btn-outline-danger">2016</button>
+        <input type="range" min="1966" max="2017" id="slider" step="1" value="2016" class="custom-range">
+        <p>
+          Mass shooting incidents are represented with red circles. Use
+          the slider to look at data for different years.
+        </p>
+      </div>
+    </div>
+
+    <div class="card fixed-event-detail d-none" style="width: 400px;">
+      <div class="card-body">
+        <h5 id="card-title-event" class="card-title">Card title</h5>
+        <h6 id="card-subtitle-event" class="card-subtitle mb-2 text-danger">Card subtitle</h6>
+        <p id="card-summary-event"></p>
+        <ul id="card-extra-details-event" class="list-group">
+          <!-- <li class="list-group-item">Cras justo odio</li> -->
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Code for Graph One
+    var svg_width = 800;
+    var svg_height = 500;
+    var margin = { top: 30, right: 30, bottom: 50, left: 60 };
+    var data_filtered = {};
+    var valid_data = {};
+
+    async function draw_graph() {
+
+      d3.select("#p1_div_for_svg")
+        .append("svg")
+        .attr("width", svg_width).attr("height", svg_height)
+        .attr("id", "p1_svg")
+        .append("g").attr("id", "p1_svg_g1");
+
+      var svg = d3.select('#p1_svg_g1');
+
+      // load the state TopoJSON data
+      var states_topo = await d3.json("./us-map-data/us.json");
+      // convert the TopoJSON to GeoJson
+      var states_geo = topojson.feature(states_topo, states_topo.objects.states);
+      // D3 Projection
+      var projection = d3.geoAlbersUsa().fitSize([svg_width, svg_height], states_geo);
+      var path = d3.geoPath().projection(projection);
+
+      var state_name_IDs = await d3.tsv("../us-map-data/us-state-names.tsv");
+
+
+      svg.selectAll("path")
+        .data(states_geo.features)
+        .enter()
+        .append("path")
+        .attr("class", "state")
+        .attr("d", path)
+        .attr("state_id", data => data.id)
+        .attr("state_name", data => get_state_name(data.id, state_name_IDs));
+
+      svg.selectAll("text")
+        .data(states_geo.features)
+        .enter()
+        .append("svg:text")
+        .text(data => get_state_name(data.id, state_name_IDs, short = true))
+        .attr("x", d => {
+          x = path.centroid(d)[0]
+          return isNaN(x) ? 0 : x;
+        })
+        .attr("y", d => {
+          y = path.centroid(d)[1];
+          return isNaN(y) ? 0 : y;
+        })
+        .attr("text-anchor", "middle")
+        .attr('font-size', '13px');
+
+
+      education_data = null;
+
+      //GUN VIOLENCE DATA
+      let violence_data = await d3.csv("../datasets/gun-violence-data2013-2018_2.csv");
+
+      violence_data = violence_data.filter(d => d["longitude"] != "" && d["latitude"] != "" && d["longitude"] != null && d["latitude"] != null);
+
+      // get the gun violence data for the common years
+      var gun_violence_2013_2016 = {
+        '2013': [],
+        '2014': [],
+        '2015': [],
+        '2016': [],
+      };
+
+      violence_data.forEach((d) => {
+        var year = d["date"].split("/");
+        if (year[2] == "13") {
+          gun_violence_2013_2016['2013'].push(d);
+
+        } else if (year[2] == "14") {
+          gun_violence_2013_2016['2014'].push(d);
+
+        } else if (year[2] == "15") {
+          gun_violence_2013_2016['2015'].push(d);
+
+        } else if (year[2] == "16") {
+          gun_violence_2013_2016['2016'].push(d);
+        }
+      });
+
+      update_gun_violence_data(gun_violence_2013_2016['2016']); // set 2016 as the default year for gun violence
+
+      // Mass Shooting Data
+      var shooting_data = await d3.csv("../datasets/mass-shooting-dataset.csv");
+
+      shooting_data = shooting_data.filter(d => d["Longitude"] != "" &&
+        d["Latitude"] != "");
+
+      // var mass_shooting_1966_2017 = {
+      //   '2013': [],
+      //   '2014': [],
+      //   '2015': [],
+      //   '2016': [],
+      // };
+
+      var mass_shooting_1966_2017 = {};
+
+      // Load the mass shooting data into mass_shooting_1966_2017
+      shooting_data.forEach((d) => {
+        var shooting_year = d["Date"].split("/");
+        shooting_year = shooting_year[2];
+        if (mass_shooting_1966_2017[shooting_year] === undefined) {
+          mass_shooting_1966_2017[shooting_year] = [];
+        }
+        mass_shooting_1966_2017[shooting_year].push(d);
+      })
+
+      console.log("mass_shooting_1966_2017: ", mass_shooting_1966_2017);
+
+      update_mass_shooting_data(mass_shooting_1966_2017[+'2016']); // set 2016 as the default year for mass shootings
+
+      // Button click handler for changing data.
+      d3.selectAll(".year-change-button").on("mouseup", function () {
+        d3.selectAll(".year-change-button").classed('active', false);
+        d3.select(this).classed('active', true);
+        let button_year = d3.select(this).attr("year_value");
+        let svg = d3.select("#p1_svg")
+        svg.selectAll(".mass_shooting_data_point").remove();
+        update_mass_shooting_data(mass_shooting_1966_2017[button_year]);
+        update_gun_violence_data(gun_violence_2013_2016[button_year]);
+      });
+
+      function update_gun_violence_data(year_data) {
+        let crime_counts_this_year = {};
+        let stateName = {};
+        state_name_IDs.forEach(row => {
+          crime_counts_this_year[row.name] = 0;
+          stateName[row.id] = row.name;
+        });
+
+        year_data.forEach(d => {
+          crime_counts_this_year[d["state"]] += 1;
+        });
+
+        let min_max_crime_counts = d3.extent(state_name_IDs, d => crime_counts_this_year[d.name]);
+
+        let color_scale = d3.scaleSequential(d3.interpolateBlues)
+          .domain([min_max_crime_counts[0], min_max_crime_counts[1]]);
+
+        svg.selectAll(".state")
+          .style("fill", d => color_scale(crime_counts_this_year[stateName[d.id]]));
+
+        // update legend..
+        update_legend(color_scale, min_max_crime_counts[0], min_max_crime_counts[1]);
+      }
+
+      function update_mass_shooting_data(year_data) {
+        let svg = d3.select("#p1_svg")
+        let circles = svg.selectAll(".mass_shooting_data_point").data(year_data);
+        // remove existing circle objects.
+
+        // create new circle objects.
+        // console.log("inside the function..");
+        circles
+          .enter().append("circle")
+          .attr("r", d => (+d['Fatalities'] + +d['Injured']) * 1.2)
+          .attr("transform", d => {
+            return "translate(" + projection([+d["Longitude"], +d["Latitude"]]) + ")";
+          })
+          .attr("class", "mass_shooting_data_point")
+          .style("opacity", 0.5)
+          .style("stroke", "black")
+          .style("fill", "red")
+          .on('mouseover', function (d) {
+            element = d3.select(this);
+            d3.select(".fixed-event-detail").classed('d-none', false);
+            d3.select("#card-title-event").text(d['Title'])
+            d3.select("#card-subtitle-event").text("Date: " + d['Date'])
+            d3.select("#card-summary-event").text("Summary: " + d['Summary'])
+            d3.select("#card-extra-details-event").html("") // clear list elements 
+            if (d.Location !== "") {
+              d3.select("#card-extra-details-event").append("li").attr('class', 'list-group-item')
+                .text("Location: " + d.Location);
+            }
+            d3.select("#card-extra-details-event").append("li").attr('class', 'list-group-item')
+              .text("Fatalities: " + d.Fatalities)
+            d3.select("#card-extra-details-event").append("li").attr('class', 'list-group-item')
+              .text("Injured: " + d.Injured)
+            d3.select("#card-extra-details-event").append("li").attr('class', 'list-group-item text-danger')
+              .text("Total victims: " + d['Total victims'])
+            d3.select("#card-extra-details-event").append("li").attr('class', 'list-group-item')
+              .text("Shooter Race: " + d['Race'])
+            d3.select("#card-extra-details-event").append("li").attr('class', 'list-group-item')
+              .text("Shooter Sex: " + d['Gender'])
+          })
+          .on('mouseout', function (d) {
+            d3.select(".fixed-event-detail").classed('d-none', true);
+          });
+      }
+
+
+      // DRAW THE LEGEND>>>>
+      function update_legend(color_scale, min, max) {
+        let svg_width = 800;
+        let svg_height = 100;
+        let margin = { top: 10, right: 50, bottom: 20, left: 50 };
+        let bar_height = 50;
+        let step_size = 5;
+
+        d3.select("#legend_svg_id").remove();
+
+        d3.select("#p1_div_for_legend")
+          .append("svg")
+          .attr("id", "legend_svg_id")
+          .attr("width", svg_width).attr("height", svg_height)
+          .append("g").attr("id", "p1_legend_svg_g1");
+
+        let svg = d3.select("#p1_legend_svg_g1");
+
+        let x_scale = d3.scaleLinear()
+          .domain([0, 1])
+          .range([margin.left, svg_width - margin.right]);
+
+        let bottomAxis = d3.axisBottom(x_scale)
+          .ticks(20)
+          .tickFormat(d => d3.format('0.2s')(d * max));
+        svg.append("g").attr("class", "x_axis")
+          .attr("transform", "translate(" + (0) + "," + (svg_height - margin.bottom) + ")")
+          .call(bottomAxis)
+          .selectAll("text")
+          .style("text-anchor", "middle");
+
+        svg.append("g").attr("id", "legend_bars");
+
+        svg = d3.select("#legend_bars");
+
+        for (let i = 0; i <= 1.01; i = i + 0.01) {
+          // console.log("i * max: ", i * max);
+          svg.append("rect")
+            .attr("x", x_scale(i))
+            .attr("y", 25)
+            .attr("width", step_size)
+            .attr("height", bar_height)
+            .attr('stroke-width', .5)
+            .attr('stroke', "black")
+            .attr("fill", color_scale(i * max));
+        }
+      }
+
+      d3.select("#p2_div_for_svg")
+        .append("svg")
+        .attr("width", 800).attr("height", 500)
+        .attr("id", "p2_svg")
+        .append("g").attr("id", "p2_svg_g1");
+
+      var svg2 = d3.select('#p2_svg_g1');
+
+      svg2.selectAll("path")
+        .data(states_geo.features)
+        .enter()
+        .append("path")
+        .attr("class", "state")
+        .attr("d", path)
+        .attr("state_id", data => data.id)
+        .attr("state_name", data => get_state_name(data.id, state_name_IDs));
+
+      svg2.selectAll("text")
+        .data(states_geo.features)
+        .enter()
+        .append("svg:text")
+        .text(data => get_state_name(data.id, state_name_IDs, short = true))
+        .attr("x", d => {
+          x = path.centroid(d)[0]
+          return isNaN(x) ? 0 : x;
+        })
+        .attr("y", d => {
+          y = path.centroid(d)[1];
+          return isNaN(y) ? 0 : y;
+        })
+        .attr("text-anchor", "middle")
+        .attr('font-size', '13px');
+
+      update_mass_shooting_data2(mass_shooting_1966_2017['2016']);
+
+      function update_mass_shooting_data2(year_data) {
+        let svg2 = d3.select("#p2_svg")
+        let circles2 = svg2.selectAll(".mass_shooting_data_point").data(year_data);
+        circles2
+          .enter().append("circle")
+          .attr("r", d => Math.min((+d['Fatalities'] + +d['Injured']) * 1.2, 160))
+          .attr("transform", d => {
+            return "translate(" + projection([+d["Longitude"], +d["Latitude"]]) + ")";
+          })
+          .attr("class", "mass_shooting_data_point_2")
+          .style("opacity", 0.5)
+          .style("stroke", "black")
+          .style("fill", "red")
+          .on('mouseover', function (d) {
+            element = d3.select(this);
+            d3.select(".fixed-event-detail").classed('d-none', false);
+            d3.select("#card-title-event").text(d['Title'])
+            d3.select("#card-subtitle-event").text("Date: " + d['Date'])
+            d3.select("#card-summary-event").text("Summary: " + d['Summary'])
+            d3.select("#card-extra-details-event").html("") // clear list elements 
+            if (d.Location !== "") {
+              d3.select("#card-extra-details-event").append("li").attr('class', 'list-group-item')
+                .text("Location: " + d.Location);
+            }
+            d3.select("#card-extra-details-event").append("li").attr('class', 'list-group-item')
+              .text("Fatalities: " + d.Fatalities)
+            d3.select("#card-extra-details-event").append("li").attr('class', 'list-group-item')
+              .text("Injured: " + d.Injured)
+            d3.select("#card-extra-details-event").append("li").attr('class', 'list-group-item text-danger')
+              .text("Total victims: " + d['Total victims'])
+            d3.select("#card-extra-details-event").append("li").attr('class', 'list-group-item')
+              .text("Shooter Race: " + d['Race'])
+            d3.select("#card-extra-details-event").append("li").attr('class', 'list-group-item')
+              .text("Shooter Sex: " + d['Gender'])
+          })
+          .on('mouseout', function (d) {
+            d3.select(".fixed-event-detail").classed('d-none', true);
+          });
+      }
+      d3.select("#slider").on("input", function () {
+        let svg2 = d3.select("#p2_svg")
+        svg2.selectAll(".mass_shooting_data_point_2").remove();
+        d3.select("#slider_value").text(this.value);
+        this_year_data = mass_shooting_1966_2017[this.value]
+        if (this_year_data !== undefined && this_year_data.length > 0) {
+          update_mass_shooting_data2(mass_shooting_1966_2017[this.value]);
+        };
+      });
+
+
+    }
+
+    draw_graph();
+
+    clean_name = (name) => {
+      let cleaned_name = name.replace(/[ ]/g, "_");
+      return cleaned_name.toLowerCase().replace(/[ \-,.:'()&#!?]/g, "")
+    };
+
+    get_state_name = (id, state_name_IDs, short = false) => {
+      let temp = state_name_IDs.filter(state => {
+        return Number(state.id) === id;
+      });
+      if (short) return temp[0].code;
+      return clean_name(temp[0].name);
+    };
+  </script>
+
+</body>
+
+</html>
