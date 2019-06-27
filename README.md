@@ -1,5 +1,5 @@
 # USA Mass Shootings and Gun Violence
-Project by: SM Mashuque, Anstasia Okoye, and Kelly Yu
+Project by: SM Mashuque, Anastasia Okoye, and Kelly Yu
 
 ## Description of Data
 We utilized two datasets from Kaggle.com for our project. The datasets are described below.
